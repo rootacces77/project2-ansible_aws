@@ -1,0 +1,9 @@
+- name: Generate Config
+  ansible.builtin.template:
+    src: server_config.yaml.j2
+    dest: /etc/ssh/sshd_config.d/server_config.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+

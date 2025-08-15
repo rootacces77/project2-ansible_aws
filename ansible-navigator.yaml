@@ -1,0 +1,16 @@
+ansible-navigator:
+  ansible:
+    config:
+      path: ./ansible.cfg 
+
+  execution-environment:
+    container-engine: docker
+    enabled: true
+    image: project2-env:1.0
+    pull:
+      policy: missing
+
+  playbook-artifact:
+    enable: false
+
+

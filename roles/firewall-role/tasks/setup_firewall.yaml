@@ -1,0 +1,23 @@
+- name: Generate HTTPD service
+  ansible.builtin.template:
+    src: httpd.xml.j2
+    dest: /etc/firewalld/services/httpd.xml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Generate SSHD service
+  ansible.builtin.template:
+    src: sshd.xml.j2
+    dest: /etc/firewalld/services/sshd.xml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Generate Zone
+  ansible.builtin.template:
+    src: webserver-zone.xml.j2
+    dest: /etc/firewalld/zones/webserver-zone.xml
+    owner: root
+    group: root
+    mode: '0644'

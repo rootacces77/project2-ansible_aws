@@ -1,0 +1,6 @@
+- name: Add custom httpd port
+  community.general.seport:
+    ports: "{{httpd_port}}"
+    proto: tcp
+    state: present
+    setype: 'http_port_t'

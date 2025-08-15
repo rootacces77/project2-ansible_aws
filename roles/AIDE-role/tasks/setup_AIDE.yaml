@@ -1,0 +1,15 @@
+- name: Install AIDE
+  ansible.builtin.dnf:
+    name: aide
+    state: present
+
+- name: Copy Config
+  ansible.builtin.template:
+    src: aide.conf.j2
+    dest: /etc/aide.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create AIDE database
+  ansible.builtin.command: "sudo aide --init"

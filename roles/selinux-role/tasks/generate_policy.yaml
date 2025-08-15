@@ -1,0 +1,27 @@
+- name: Install requirements
+  ansible.builtin.dnf:
+    name: container-tools
+    state: present
+
+- name: Generate selinux.sh
+  ansible.builtin.template:
+    src: selinux.sh.j2
+    dest: /tmp/selinux.sh
+  delegate_to: localhost 
+
+- name: Run selinux.sh
+  ansible.builtin.shell: bash
+  args:
+    stdin: "{{ lookup('file', '/tmp/selinux.sh') }}"
+  register: test
+
+- name: Debug
+  ansible.builtin.debug:
+    var: test 
+   
+- name: Remove selinux.sh
+  ansible.builtin.file:
+    path: /tmp/selinux.sh
+    state: absent
+  delegate_to: localhost 
+

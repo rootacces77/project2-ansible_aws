@@ -1,0 +1,10 @@
+- name: Copy Config file
+  ansible.builtin.copy:
+    src: webserver.conf
+    dest: /etc/sysctl.d/webserver.conf
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Apply changes
+  ansible.builtin.command: 'sudo sysctl --system'

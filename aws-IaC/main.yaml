@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CouldFormation stack to create AMI image of EC2
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: MySubnet
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyIGW
+
+  AttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: MyRouteTable
+
+  MyRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachIGW
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MySubnet
+      RouteTableId: !Ref MyRouteTable
+
+  MySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: MySG
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M  # Wait up to 30 minutes for cfn-signal
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-005019f47c98b4abd
+      KeyName: !Ref KeyName
+      SubnetId: !Ref MySubnet
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MySubnet
+          GroupSet:
+            - !Ref MySG
+      Tags:
+        - Key: Name
+          Value: MyEC2Instance
+        - Key: group
+          Value: web
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo dnf update 
+          sudo dnf install ansible python3 git aws-cfn-bootstrap
+          sudo ansible-galaxy collection install community.general ansible.posix containers.podman
+          sudo git clone https://github.com/rootacces77/project2-ansible_aws
+          sudo cd project2-ansible_aws && sudo ansible-playbook playbooks/main.yaml
+          sudo dnf remove ansible git          
+         
+          /opt/aws/bin/cfn-signal --exit-code 0 \
+           --stack ${AWS::StackName} \
+           --resource MyEC2Instance \
+           --region ${AWS::Region}
+
+
+  MyAMI:
+    Type: AWS::EC2::Image
+    DeletionPolicy: Retain
+    Properties:
+      InstanceId: !Ref MyEC2Instance
+      Name: MyEC2InstanceAMI
+      Description: AMI created from MyEC2Instance
+      NoReboot: false
