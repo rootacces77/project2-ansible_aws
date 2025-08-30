@@ -51,5 +51,5 @@
         name: firewall-role
         tasks_from: reload_firewall.yaml
 
-    - name: Reboot
-      ansible.builtin.command: 'sudo reboot'
+#    - name: Reboot
+#      ansible.builtin.command: 'sudo reboot'
