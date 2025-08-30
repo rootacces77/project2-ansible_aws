@@ -2,5 +2,11 @@
 ---
 # tasks file for firewall-role
 
+- name: Install Firewalld
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
 - name: Task1
   ansible.builtin.include_tasks: setup_firewall.yaml
+

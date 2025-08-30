@@ -122,9 +122,9 @@ Resources:
           git clone https://github.com/rootacces77/project2-ansible_aws
           cd project2-ansible_aws && sudo ansible-playbook playbooks/main.yaml
           sudo dnf remove ansible-core git -y
-          dnf -y autoremove || true
+          sudo dnf -y autoremove || true
          
-          aws cloudformation signal-resource \
+          sudo aws cloudformation signal-resource \
             --stack-name ${AWS::StackName} \
             --logical-resource-id MyEC2Instance \
             --status SUCCESS \
@@ -228,7 +228,7 @@ Resources:
     DeletionPolicy: Retain
 
 
-InstanceSignalRole:
+  InstanceSignalRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -246,7 +246,7 @@ InstanceSignalRole:
                 Action: cloudformation:SignalResource
                 Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
 
-InstanceSignalInstanceProfile:
+  InstanceSignalInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles: [ !Ref InstanceSignalRole ]
