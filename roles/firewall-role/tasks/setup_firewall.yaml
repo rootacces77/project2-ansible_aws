@@ -7,7 +7,7 @@
 - name: Start and enable Firewalld
   ansible.builtin.service:
     name: firewalld
-    state: running
+    state: started
     enabled: true
 
 - name: Generate HTTPD service
