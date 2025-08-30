@@ -7,7 +7,7 @@ Parameters:
     Description: EC2 Key Pair
 
   CustomAMI:
-    Type: ImageId
+    Type: AWS::EC2::Image::Id
     Description: AMI 
 
 Resources:
@@ -222,7 +222,7 @@ Resources:
             #!/bin/bash
             sudo dnf install -y python3 || true
             sudo dnf install -y amazon-ssm-agent || true
-            systemctl enable --now amazon-ssm-agent || true
+            sudo systemctl enable --now amazon-ssm-agent || true
 
   MyAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup

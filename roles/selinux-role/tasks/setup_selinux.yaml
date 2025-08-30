@@ -5,9 +5,3 @@
     setype: 'http_port_t'
     state: present
 
-- name: Open sshd port
-  community.general.seport:
-    ports: "{{sshd_port}}"
-    proto: tcp
-    setype: 'ssh_port_t'
-    state: present
