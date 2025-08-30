@@ -15,14 +15,6 @@
     group: root
     mode: '0640'
 
-- name: Copy ssh key
-  ansible.posix.authorized_key:
-    user: "{{sshd_user}}"
-    key: "{{sshd_public_key}}"
-    manage_dir: true
-    state: present
-
-
 - name: Create Container user
   ansible.builtin.user:
     name: "{{container_user}}"

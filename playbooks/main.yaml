@@ -20,11 +20,6 @@
         name: firewall-role
         tasks_from: main.yml
 
-    - name: sshd-role
-      ansible.builtin.include_role:
-        name: sshd-role
-        tasks_from: main.yml
-
     - name: container-role
       ansible.builtin.import_role:
         name: container-role

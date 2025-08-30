@@ -6,6 +6,10 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: EC2 Key Pair
 
+  CustomAMI:
+    Type: ImageId
+    Description: AMI 
+
 Resources:
   # -------------------------
   # Networking
@@ -157,10 +161,7 @@ Resources:
       Port: 8080
       Protocol: HTTP
       TargetType: instance
-      Targets:
-        - Id: !Ref PrivateInstance1
-        - Id: !Ref PrivateInstance2
-      HealthCheckPath: /
+      HealthCheckPath: /index.html
 
   MyALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -186,6 +187,25 @@ Resources:
   # -------------------------
   # Auto Scaling Group
   # -------------------------
+  SSMInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  SSMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref SSMInstanceRole
+
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -195,11 +215,14 @@ Resources:
         KeyName: !Ref KeyName
         SecurityGroupIds:
           - !Ref InstanceSecurityGroup
+        IamInstanceProfile:
+          Arn: !GetAtt SSMInstanceProfile.Arn
         UserData:
           Fn::Base64: |
             #!/bin/bash
-            systemctl enable httpd
-            systemctl start httpd
+            sudo dnf install -y python3 || true
+            sudo dnf install -y amazon-ssm-agent || true
+            systemctl enable --now amazon-ssm-agent || true
 
   MyAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup

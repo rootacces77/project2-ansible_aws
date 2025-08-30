@@ -124,7 +124,7 @@ Resources:
           sudo dnf remove ansible-core git -y
           sudo dnf -y autoremove || true
          
-          sudo aws cloudformation signal-resource \
+          sudo /usr/local/bin/aws cloudformation signal-resource \
             --stack-name ${AWS::StackName} \
             --logical-resource-id MyEC2Instance \
             --status SUCCESS \
@@ -188,7 +188,7 @@ Resources:
                       resp = ec2.create_image(
                           InstanceId=instance_id,
                           Name=ami_name,
-                          NoReboot=True
+                          NoReboot=False
                       )
                       ami_id = resp["ImageId"]
 
