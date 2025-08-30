@@ -1,18 +1,18 @@
-- name: Podman login
-  containers.podman.podman_login:
-    username: "{{podman_username}}"
-    password: "{{podman_password}}"
-    registry: 'registry.redhat.io'
+#- name: Podman login
+#  containers.podman.podman_login:
+#    username: "{{podman_username}}"
+#    password: "{{podman_password}}"
+#    registry: 'registry.redhat.io'
 
 - name: Run container and generate systemd service
   containers.podman.podman_container:
     name: "{{container_name}}"
-    image: registry.redhat.io/ubi9/httpd-24
+    image: docker.io/library/httpd:latest
     state: started
     detach: true
     network: 'slirp4netns'
     ports:
-      - "0.0.0.0:8080:8080"
+      - "0.0.0.0:8080:80"
     generate_systemd:
       path: '/home/{{container_user}}/.config/systemd/user/'
       restart_policy: always
