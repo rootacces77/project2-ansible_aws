@@ -117,7 +117,7 @@ Resources:
           unzip -q "$TMPD/awscliv2.zip" -d "$TMPD"
           "$TMPD/aws/install" --update
           rm -rf "$TMPD"
-          
+
           sudo ansible-galaxy collection install community.general ansible.posix containers.podman
           git clone https://github.com/rootacces77/project2-ansible_aws
           cd project2-ansible_aws && sudo ansible-playbook playbooks/main.yaml
@@ -246,7 +246,7 @@ InstanceSignalRole:
                 Action: cloudformation:SignalResource
                 Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
 
-  InstanceSignalInstanceProfile:
+InstanceSignalInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles: [ !Ref InstanceSignalRole ]
