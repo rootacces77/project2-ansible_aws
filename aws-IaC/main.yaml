@@ -150,6 +150,9 @@ Resources:
           FromPort: 8080
           ToPort: 8080
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
 
   # -------------------------
   # EC2 in Private Subnets
@@ -218,11 +221,51 @@ Resources:
         IamInstanceProfile:
           Arn: !GetAtt SSMInstanceProfile.Arn
         UserData:
-          Fn::Base64: |
+          Fn::Base64: !Sub |
             #!/bin/bash
-            sudo dnf install -y python3 || true
-            sudo dnf install -y amazon-ssm-agent || true
-            sudo systemctl enable --now amazon-ssm-agent || true
+            set -euxo pipefail
+            
+            
+            # Try distro repo first; if missing, fall back to regional S3 package
+            install_ssm_repo() {
+             if command -v dnf >/dev/null 2>&1; then
+             dnf -y install amazon-ssm-agent && return 0 || true
+             elif command -v yum >/dev/null 2>&1; then
+             yum -y install amazon-ssm-agent && return 0 || true
+             elif command -v apt-get >/dev/null 2>&1; then
+             apt-get update -y || true
+             apt-get install -y amazon-ssm-agent && return 0 || true
+             fi
+             return 1
+            }
+
+            install_ssm_s3() {
+             REGION="$(curl -s http://169.254.169.254/latest/meta-data/placement/region)"
+             if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+             URL_RPM="https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_amd64/amazon-ssm-agent.rpm"
+             curl -fsSL "$URL_RPM" -o /tmp/ssm.rpm
+             (command -v dnf >/dev/null 2>&1 && dnf -y install /tmp/ssm.rpm) || yum -y localinstall /tmp/ssm.rpm
+             rm -f /tmp/ssm.rpm
+             else
+             URL_DEB="https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/debian_amd64/amazon-ssm-agent.deb"
+             curl -fsSL "$URL_DEB" -o /tmp/ssm.deb
+             apt-get update -y || true
+             apt-get install -y /tmp/ssm.deb
+             rm -f /tmp/ssm.deb
+             fi
+            }
+
+            install_ssm_repo || install_ssm_s3
+
+            # Ensure time sync (TLS/signing needs accurate clock)
+            if command -v systemctl >/dev/null 2>&1; then
+            systemctl enable --now chronyd || true
+            fi
+
+            systemctl enable --now amazon-ssm-agent
+
+            
+    
 
   MyAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -240,6 +283,10 @@ Resources:
         - !Ref MyTargetGroup
       HealthCheckType: ELB
       HealthCheckGracePeriod: 60
+      Tags:
+        - Key: Name
+          Value: web
+          PropagateAtLaunch: true
 
   # -------------------------
   # Scaling Policy by CPU

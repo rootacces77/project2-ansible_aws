@@ -1,20 +1,3 @@
-- name: Create sshd user
-  ansible.builtin.user:
-    name: "{{sshd_user}}"
-    shell: /bin/bash
-    create_home: true
-    state: present
-    expires: -1
-    groups: wheel
-
-- name: Add to sudoers
-  ansible.builtin.copy:
-    dest: /etc/sudoers.d/"{{sshd_user}}"
-    content: "{{sshd_user}} ALL=(ALL) NOPASSWD: ALL"
-    owner: root
-    group: root
-    mode: '0640'
-
 - name: Create Container user
   ansible.builtin.user:
     name: "{{container_user}}"
