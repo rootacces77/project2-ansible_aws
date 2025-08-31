@@ -46,9 +46,9 @@
         name: firewall-role
         tasks_from: reload_firewall.yaml
 
-    - name: Disable ssh
-      ansible.builtin.service:
-        name: sshd
-        state: stopped
-        enabled: false
+#    - name: Disable Unused Services
+#      ansible.builtin.include_role:
+#        name: general_settings
+#        tasks_from: disable_services.yaml
+
 

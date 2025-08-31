@@ -2,9 +2,9 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: ALB in public subnets routing to EC2 in private subnets
 
 Parameters:
-  KeyName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: EC2 Key Pair
+#  KeyName:
+#    Type: AWS::EC2::KeyPair::KeyName
+#    Description: EC2 Key Pair
 
   CustomAMI:
     Type: AWS::EC2::Image::Id
@@ -212,7 +212,7 @@ Resources:
       LaunchTemplateData:
         ImageId: !Ref CustomAMI
         InstanceType: t2.micro
-        KeyName: !Ref KeyName
+#        KeyName: !Ref KeyName
         SecurityGroupIds:
           - !Ref InstanceSecurityGroup
         IamInstanceProfile:

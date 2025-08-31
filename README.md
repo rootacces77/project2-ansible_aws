@@ -1,38 +1,24 @@
-In this project I've tried to isolate and secure container as much as I can.
-Project creates custom container user with no shell ( /sbin/nologin ) and no sudo priviledges.
-User is mapped to staff_u SeLinux user which has only one role staff_r ( system_r and other roles are removed ).
-Using udica I've created custom SeLinux label in which container is running.
-Container is running in non root enviroment using podman and starts automatically from user systemd file.
-Systemd file and Sysctl file have custom parametars which make it more secure and isolated.
+This project is same as project2_ansible.Difference is Im deploying server's on AWS.
 
+Project creates custom user with no shell ( /sbin/nologin ) and no sudo priviledges. User is mapped to staff_u SeLinux user which has only one role staff_r ( system_r and other roles are removed ). Using udica I've created custom SeLinux label in which container is running. Container is running in non root enviroment using podman and starts automatically from user systemd file. Systemd file and Sysctl file have custom parametars which make it more secure and isolated.It also has firewall set up and modified SeLinux booleans.
 
-
-For this project you need to have one redhat virtual machine with subscription-manager registred.
-And one more machine which exports NFS dir -> nfs-dir/html/index.html ( You can skip this part but you have to comment out nfs-role in playbooks/main.yaml )
-Also comment out task located in container-role - name: Modify unit file label 2 
-
-
+Container is using httpd image with no modifications.
 
 Step 1.
-Create python3 enviroment which has ansible-navigator and ansible-builder installed.
-Build execution enviroment image from ansible-ee/execution-environment.yaml file using ansible-builder.
-In ansible-navigator.yaml file change the name of image to name which you selected.
-In invontory/hosts file set the ip address of your virtual machine
-
+Create AMI image with CloudFormation stack using a file aws-IaC/create_AMI.yaml.
+You will be asked for a ssh key and name of AMI.
+This will lounch EC2 instance run ansible code on it and create AMI Image.
+When you delete a stack AMI Image will stay.Everything else from a stack will be deleted.
 
 Step 2.
-You can modify variables located in playbooks/vars/main.yaml.
-Required variables which you need to populate are podman_username,podman_password,nfs_ip.
-
+Create environment in which server's will be running using aws-IaC/main.yaml.
+This will create everything including VPC,Subnets,IG,NAT GW,ALB,AutoScaling..etc.
+AutoScaling policy will create two EC2 instances and increase to maximum of five when CPU goes over 70%.
+You will be asked for AMI Id.
 
 Step 3.
-Run playbooks/main.yaml file using ansible-navigator
-
-
-
-When ansible finished you will only be able to login using user specified in playbooks/vars/main.yaml using key project2-key.
-I've had some problems with podman_container module which didnt let me mount custom dirs to containers so I had to manually add line into systemd file.
-
+The only way you are going to be able to login into server is through Session Manager (SSHD is disabled).
+When you are done just delete stacks and dont forget to delete AMI image.
 
 
 Things to do:
