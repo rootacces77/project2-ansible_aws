@@ -1,0 +1,7 @@
+- name: Disable CUPS
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  ignore_errors: true
+  loop: "{{disable_services}}"

@@ -1,0 +1,9 @@
+#podman_username: ""
+#podman_password: ""
+
+httpd_port: 8080
+
+container_user: containers
+
+TIMEZONE: "Europe/Belgrade"
+

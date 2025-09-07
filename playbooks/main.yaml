@@ -1,0 +1,54 @@
+- name: Main file
+  become: true
+  gather_facts: true
+  hosts: localhost
+  vars_files:
+    - vars/main.yaml
+  tasks:
+    - name: adduser-role
+      ansible.builtin.include_role:
+        name: adduser-role
+        tasks_from: main.yml
+
+    - name: general_settings
+      ansible.builtin.include_role:
+        name: general_settings
+        tasks_from: main.yml
+
+    - name: firewall-role
+      ansible.builtin.include_role:
+        name: firewall-role
+        tasks_from: main.yml
+
+    - name: container-role
+      ansible.builtin.import_role:
+        name: container-role
+        tasks_from: main.yml
+      become_user: "{{container_user}}"
+
+    - name: selinux-role
+      ansible.builtin.include_role:
+        name: selinux-role
+        tasks_from: main.yml
+
+    - name: sysctl-role
+      ansible.builtin.include_role:
+        name: sysctl-role
+        tasks_from: main.yml
+
+    - name: AIDE-role
+      ansible.builtin.include_role:
+        name: AIDE-role
+        tasks_from: main.yml
+   
+    - name: Reload Firewall
+      ansible.builtin.include_role:
+        name: firewall-role
+        tasks_from: reload_firewall.yaml
+
+#    - name: Disable Unused Services
+#      ansible.builtin.include_role:
+#        name: general_settings
+#        tasks_from: disable_services.yaml
+
+

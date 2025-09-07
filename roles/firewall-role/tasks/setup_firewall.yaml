@@ -1,0 +1,27 @@
+
+- name: Install Firewalld
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
+- name: Start and enable Firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Generate HTTPD service
+  ansible.builtin.template:
+    src: httpd.xml.j2
+    dest: /etc/firewalld/services/httpd.xml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Generate Zone
+  ansible.builtin.template:
+    src: webserver-zone.xml.j2
+    dest: /etc/firewalld/zones/webserver-zone.xml
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CouldFormation stack to create AMI image of EC2
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Existing EC2 KeyPair name for SSH access
+
+  AmiNamePrefix:
+    Type: String
+    Default: myapp
+    Description: Prefix for the AMI name (timestamp will be appended)
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: MySubnet
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyIGW
+
+  AttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: MyRouteTable
+
+  MyRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachIGW
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MySubnet
+      RouteTableId: !Ref MyRouteTable
+
+  MySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH and HTTP
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: MySG
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M  # Wait up to 30 minutes for cfn-signal
+    Properties:
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref InstanceSignalInstanceProfile
+      ImageId: ami-0dfc569a8686b9320
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref MySubnet
+          GroupSet:
+            - !Ref MySG
+      Tags:
+        - Key: Name
+          Value: MyEC2Instance
+        - Key: group
+          Value: web
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo dnf update -y
+          sudo dnf install ansible-core python3 git unzip curl -y
+
+          TMPD=$(mktemp -d)
+          curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$TMPD/awscliv2.zip"
+          unzip -q "$TMPD/awscliv2.zip" -d "$TMPD"
+          "$TMPD/aws/install" --update
+          rm -rf "$TMPD"
+
+          sudo ansible-galaxy collection install community.general ansible.posix containers.podman
+          git clone https://github.com/rootacces77/project2-ansible_aws
+          cd project2-ansible_aws && sudo ansible-playbook playbooks/main.yaml
+          sudo dnf remove ansible-core git -y
+          sudo dnf -y autoremove || true
+         
+          sudo /usr/local/bin/aws cloudformation signal-resource \
+            --stack-name ${AWS::StackName} \
+            --logical-resource-id MyEC2Instance \
+            --status SUCCESS \
+            --unique-id "$(hostname)" \
+            --region ${AWS::Region}
+
+  AmiCreatorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+
+  AmiCreatorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt AmiCreatorLambdaRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json, urllib.request, boto3, time
+
+          ec2 = boto3.client("ec2")
+
+          # Minimal replacement for cfnresponse on Python 3.12+
+          def send_response(event, context, status, data=None, physical_id=None):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": f"See CloudWatch Logs: {context.log_group_name}/{context.log_stream_name}",
+                  "PhysicalResourceId": physical_id or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": data or {}
+              }).encode("utf-8")
+
+              req = urllib.request.Request(event["ResponseURL"], data=body, method="PUT")
+              # Per CFN contract, content-type can be empty
+              req.add_header("content-type", "")
+              req.add_header("content-length", str(len(body)))
+              with urllib.request.urlopen(req) as resp:
+                  resp.read()
+
+          def handler(event, context):
+              try:
+                  req_type = event.get("RequestType")
+                  if req_type in ("Create", "Update"):
+                      instance_id = event["ResourceProperties"]["InstanceId"]
+                      prefix = event["ResourceProperties"].get("AmiNamePrefix", "custom-ami")
+                      ami_name = f"{prefix}-{instance_id}-{int(time.time())}"
+
+                      resp = ec2.create_image(
+                          InstanceId=instance_id,
+                          Name=ami_name,
+                          NoReboot=False
+                      )
+                      ami_id = resp["ImageId"]
+
+                      # Optional helpful tags
+                      try:
+                          ec2.create_tags(
+                              Resources=[ami_id],
+                              Tags=[
+                                  {"Key": "Name", "Value": ami_name},
+                                  {"Key": "SourceInstance", "Value": instance_id},
+                                  {"Key": "CreatedBy", "Value": "CloudFormation"}
+                              ]
+                          )
+                      except Exception as tag_err:
+                          print("Tagging failed:", tag_err)
+
+                      send_response(event, context, "SUCCESS", {"AmiId": ami_id}, physical_id=ami_id)
+
+                  elif req_type == "Delete":
+                      # Intentionally keep the AMI; just report success
+                      send_response(event, context, "SUCCESS", {}, physical_id="retain-noop")
+
+                  else:
+                      # Unknown request type, but don't fail the stack
+                      send_response(event, context, "SUCCESS", {}, physical_id="noop")
+
+              except Exception as e:
+                  print("ERROR:", e)
+                  send_response(event, context, "FAILED", {"Error": str(e)}, physical_id="error")
+
+  AmiCustomResource:
+    Type: Custom::AmiCreator
+    Properties:
+      ServiceToken: !GetAtt AmiCreatorLambda.Arn
+      InstanceId: !Ref MyEC2Instance
+      AmiNamePrefix: !Ref AmiNamePrefix
+    DeletionPolicy: Retain
+
+
+  InstanceSignalRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSignalResource
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: cloudformation:SignalResource
+                Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+
+  InstanceSignalInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [ !Ref InstanceSignalRole ]

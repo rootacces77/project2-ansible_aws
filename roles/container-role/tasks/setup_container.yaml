@@ -1,0 +1,58 @@
+#- name: Podman login
+#  containers.podman.podman_login:
+#    username: "{{podman_username}}"
+#    password: "{{podman_password}}"
+#    registry: 'registry.redhat.io'
+
+- name: Run container and generate systemd service
+  containers.podman.podman_container:
+    name: "{{container_name}}"
+    image: docker.io/library/httpd:latest
+    state: started
+    detach: true
+    network: 'slirp4netns'
+    ports:
+      - "0.0.0.0:8080:80"
+    generate_systemd:
+      path: '/home/{{container_user}}/.config/systemd/user/'
+      restart_policy: always
+      restart_sec: 10
+      new: true
+
+- name: Test 
+  ansible.builtin.stat:
+    path: '/home/{{container_user}}/{{container_name}}.json'
+  register: inspect_info
+
+- name: Generate Inspect of container
+  ansible.builtin.shell: 'cd /home/{{container_user}} ; podman inspect {{container_name}} > {{container_name}}.json'
+  when: not inspect_info.stat.exists
+
+- name: Modify unit file label
+  ansible.builtin.lineinfile:
+    path: '/home/{{container_user}}/.config/systemd/user/container-{{container_name}}.service'
+    insertafter: '^.*--replace.*'
+    line: "      --security-opt label=type:{{container_name}}.process \\"
+    state: present
+
+- name: Modify unit file 
+  ansible.builtin.blockinfile:
+    path: '/home/{{container_user}}/.config/systemd/user/container-{{container_name}}.service'
+    insertbefore: '^.*Install.*'
+    marker: "# {mark} Ansible Block"
+    block: |
+      ProtectSystem=strict
+      ProtectHome=true
+      ProtectControlGroups=true
+    setype: 'systemd_unit_file_t'
+
+- name: Create enable dir
+  ansible.builtin.file:
+    state: directory
+    path: '/home/{{container_user}}/.config/systemd/user/default.target.wants'
+    
+- name: Create enable file
+  ansible.builtin.file:
+    state: link
+    src: '/home/{{container_user}}/.config/systemd/user/container-test.service'
+    path: '/home/{{container_user}}/.config/systemd/user/default.target.wants/container-test.service'

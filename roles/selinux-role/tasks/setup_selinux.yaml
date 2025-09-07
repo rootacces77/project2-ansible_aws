@@ -1,0 +1,7 @@
+- name: Open httpd port
+  community.general.seport:
+    ports: "{{httpd_port}}"
+    proto: tcp
+    setype: 'http_port_t'
+    state: present
+

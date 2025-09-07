@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for selinux-role
+
+- name: Task1
+  ansible.builtin.import_tasks: setup_selinux.yaml
+
+- name: Task2
+  ansible.builtin.import_tasks: generate_policy.yaml

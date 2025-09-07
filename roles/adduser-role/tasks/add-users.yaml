@@ -1,0 +1,12 @@
+- name: Create Container user
+  ansible.builtin.user:
+    name: "{{container_user}}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+    expires: -1
+    seuser: 'staff_u'
+
+
+
+

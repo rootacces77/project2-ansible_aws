@@ -1,0 +1,10 @@
+- name: Reload Firewalld
+  ansible.builtin.command: 'sudo firewall-cmd --reload'
+
+- name: Set Default Zone
+  ansible.builtin.command: 'sudo firewall-cmd --set-default-zone="{{webserver_zone}}"'
+
+- name: Remove Public Zone
+  ansible.builtin.file:
+    path: /etc/firewalld/zones/public.xml
+    state: absent

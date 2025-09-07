@@ -1,0 +1,19 @@
+#!/bin/bash
+
+
+#Remove shell from {{container_user}}
+sudo usermod -s /sbin/nologin {{container_user}}
+
+#Create and Add SeLinux policy
+cd /home/{{container_user}} && sudo udica -j /home/{{container_user}}/{{container_name}}.json {{container_name}}
+sudo semodule -i /home/{{container_user}}/{{container_name}}.cil /usr/share/udica/templates/{base_container.cil,net_container.cil}
+rm {{container_name}}.cil {{container_name}}.json
+
+
+#Remove un necessery roles from staff_u
+sudo semanage user -m -R "staff_r" staff_u
+#Map caintainer_user to staff_u
+sudo semanage login -m -s staff_u {{container_user}}
+
+#List of selinux booleans
+setsebool -P container_connect_any off

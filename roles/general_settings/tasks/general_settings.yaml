@@ -1,0 +1,14 @@
+- name: Setup Timezone
+  community.general.timezone:
+    name: "{{TIMEZONE}}"
+
+- name: Set Tuned profile
+  ansible.builtin.command: 'sudo tuned-adm profile aws'
+
+- name: Enable Linger
+  ansible.builtin.command: 'sudo loginctl enable-linger {{container_user}}'
+
+- name: Install podman
+  ansible.builtin.dnf:
+    name: podman
+    state: present
