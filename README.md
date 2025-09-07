@@ -7,14 +7,13 @@ Container is using httpd image with no modifications.
 Step 1.
 Create AMI image with CloudFormation stack using a file aws-IaC/create_AMI.yaml.
 You will be asked for a ssh key and name of AMI.
-This will lounch EC2 instance run ansible code on it and create AMI Image.
+This will launch EC2 instance,run ansible code on it and create AMI Image.
 When you delete a stack AMI Image will stay.Everything else from a stack will be deleted.
 
 Step 2.
-Create environment in which server's will be running using aws-IaC/main.yaml.
+Create environment in which server's will be running using aws-IaC/main.yaml.You will be asked for AMI Id.
 This will create everything including VPC,Subnets,IG,NAT GW,ALB,AutoScaling..etc.
 AutoScaling policy will create two EC2 instances and increase to maximum of five when CPU goes over 70%.
-You will be asked for AMI Id.
 
 Step 3.
 The only way you are going to be able to login into server is through Session Manager (SSHD is disabled).
