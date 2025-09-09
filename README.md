@@ -27,4 +27,6 @@ When you are done just delete stacks and dont forget to delete AMI image.
 
 ![Alt text](images/instances.png)
 
+![Alt text](images/server.png)
+
 ![Alt text](images/test.png)
