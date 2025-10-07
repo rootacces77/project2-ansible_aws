@@ -1,4 +1,3 @@
-This project is same as project2_ansible.Difference is Im deploying server's on AWS.
 
 Project creates custom user with no shell ( /sbin/nologin ) and no sudo privileges. User is mapped to staff_u SeLinux user which has only one role staff_r ( system_r and other roles are removed ). Using udica I've created custom SeLinux label in which container is running. Container is running in non root enviroment using podman and starts automatically from user systemd file. Systemd file and Sysctl file have custom parametars which make it more secure and isolated.It also has firewall set up and modified SeLinux booleans.
 
